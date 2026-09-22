@@ -1,0 +1,17 @@
+.gradle/
+build/
+!**/src/**/build/
+
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/**/out/
+
+.vscode/
+
+.DS_Store
+
+repo/
+!**/src/**/repo/
