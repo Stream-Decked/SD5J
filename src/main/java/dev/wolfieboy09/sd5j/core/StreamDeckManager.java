@@ -1,5 +1,6 @@
 package dev.wolfieboy09.sd5j.core;
 
+import dev.wolfieboy09.sd5j.remote.RemoteDeckTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -23,14 +25,18 @@ import java.util.function.Consumer;
  * same {@link #drainEvents} path as before, so listeners and layout logic are unchanged.</p>
  *
  * <pre>{@code
- * StreamDeckManager manager = new StreamDeckManager(new RemoteDeckTransport());
+ * StreamDeckManager manager = StreamDeckManager.createDefault();
  * manager.setDefaultBrightness(70);
  * manager.start();
+ *
+ * // no switch over DeckEvent needed; register per-event handlers:
+ * manager.on(DeckEvent.KeyDown.class,
+ *         key -> manager.submit(key.deckId(), deck -> deck.setKeyImage(key.key(), icon)));
  *
  * manager.submitAll(deck -> deck.setKeyImage(0, icon));
  *
  * // once per client tick:
- * manager.drainEvents(event -> { ... });
+ * manager.drainEvents();
  * }</pre>
  */
 @SuppressWarnings("unused")
@@ -46,11 +52,21 @@ public final class StreamDeckManager implements AutoCloseable {
     /** Identity of a connected deck, safe to hold onto from any thread. */
     public record DeckInfo(String id, DeckModel model) {}
 
+    /**
+     * A manager wired to the shipped {@code RemoteDeckTransport}. Use this for the usual set-up;
+     * hand any other {@link DeckTransport} to the constructor instead.
+     */
+    public static StreamDeckManager createDefault() {
+        return new StreamDeckManager(new RemoteDeckTransport());
+    }
+
     private final DeckTransport transport;
     private final Queue<Runnable> commands = new ConcurrentLinkedQueue<>();
     private final Queue<DeckEvent> events = new ConcurrentLinkedQueue<>();
     private final List<Consumer<DeckEvent>> listeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Throwable>> errorHandlers = new CopyOnWriteArrayList<>();
+    private final Map<Class<? extends DeckEvent>, List<Consumer<DeckEvent>>> typed =
+            new ConcurrentHashMap<>();
 
     /** Deck map. Guarded by its own monitor because transport events and the driver thread touch it. */
     private final Map<String, StreamDeck> decks = new LinkedHashMap<>();
@@ -147,7 +163,7 @@ public final class StreamDeckManager implements AutoCloseable {
 
     /**
      * Hands every queued event to {@code consumer} on the calling thread and clears the queue.
-     * Registered listeners fire too. Call this once per client tick.
+     * Registered listeners and {@link #on typed handlers} fire too. Call this once per client tick.
      */
     public void drainEvents(Consumer<DeckEvent> consumer) {
         DeckEvent event;
@@ -158,6 +174,12 @@ public final class StreamDeckManager implements AutoCloseable {
             for (Consumer<DeckEvent> listener : listeners) {
                 try { listener.accept(event); } catch (Throwable t) { reportError(t); }
             }
+            List<Consumer<DeckEvent>> handlers = typed.get(event.getClass());
+            if (handlers != null) {
+                for (Consumer<DeckEvent> handler : handlers) {
+                    try { handler.accept(event); } catch (Throwable t) { reportError(t); }
+                }
+            }
         }
     }
 
@@ -167,6 +189,28 @@ public final class StreamDeckManager implements AutoCloseable {
     public void addListener(Consumer<DeckEvent> listener) { listeners.add(listener); }
 
     public void removeListener(Consumer<DeckEvent> listener) { listeners.remove(listener); }
+
+    /**
+     * Registers a handler for exactly one {@link DeckEvent} record type, e.g.
+     * {@code manager.on(DeckEvent.KeyDown.class, key -> ...)}. No match over the sealed type
+     * needed. Fires on whichever thread calls {@link #drainEvents}, like {@link #addListener}.
+     */
+    public <T extends DeckEvent> void on(Class<T> type, Consumer<? super T> handler) {
+        List<Consumer<DeckEvent>> handlers =
+                typed.computeIfAbsent(type, ignored -> new CopyOnWriteArrayList<>());
+        handlers.add(cast(handler));
+    }
+
+    /** Removes a handler registered with {@link #on}. */
+    public <T extends DeckEvent> void off(Class<T> type, Consumer<? super T> handler) {
+        List<Consumer<DeckEvent>> handlers = typed.get(type);
+        if (handlers != null) handlers.remove(cast(handler));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Consumer<DeckEvent> cast(Consumer<?> handler) {
+        return (Consumer) handler;
+    }
 
     /** Driver thread failures are routed here instead of killing the thread. */
     public void addErrorHandler(Consumer<Throwable> handler) { errorHandlers.add(handler); }
