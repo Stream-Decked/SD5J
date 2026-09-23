@@ -30,10 +30,6 @@ sourceSets.main.resources {
     include 'NOTICE'
 }
 
-tasks.named('jar', Jar) {
-    enabled = false
-}
-
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
@@ -45,6 +41,7 @@ publishing {
         }
     }
     repositories {
+        mavenLocal()
         maven {
             url "file://${project.projectDir}/repo"
         }
