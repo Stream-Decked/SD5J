@@ -17,11 +17,21 @@ repositories {
 }
 
 dependencies {
-    api 'org.slf4j:slf4j-api:2.0.13'
+    implementation 'org.slf4j:slf4j-api:2.0.13'
     implementation 'com.google.code.gson:gson:2.10.1'
     compileOnly 'org.jetbrains:annotations:24.1.0'
     compileOnly 'com.google.errorprone:error_prone_annotations:2.18.0'
     compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+}
+
+sourceSets.main.resources {
+    srcDir '.'
+    include 'LICENSE'
+    include 'NOTICE'
+}
+
+tasks.named('jar', Jar) {
+    enabled = false
 }
 
 tasks.withType(JavaCompile).configureEach {
