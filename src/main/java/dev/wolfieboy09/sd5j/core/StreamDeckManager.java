@@ -15,29 +15,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
- * Owns the driver thread. JPEG encoding is not free, so none of it runs on the game thread:
- * hand in work with {@link #submit} and collect input with {@link #drainEvents}, both safe
- * from any thread.
- *
- * <p>Decks are not scanned here anymore. The {@link DeckTransport} does the hardware-facing
- * work: it connects to the server, reports decks as they come and go, and pushes input back as
- * {@link DeckEvent}s on whatever thread it likes. Every transport event is routed through the
- * same {@link #drainEvents} path as before, so listeners and layout logic are unchanged.</p>
- *
- * <pre>{@code
- * StreamDeckManager manager = StreamDeckManager.createDefault();
- * manager.setDefaultBrightness(70);
- * manager.start();
- *
- * // no switch over DeckEvent needed; register per-event handlers:
- * manager.on(DeckEvent.KeyDown.class,
- *         key -> manager.submit(key.deckId(), deck -> deck.setKeyImage(key.key(), icon)));
- *
- * manager.submitAll(deck -> deck.setKeyImage(0, icon));
- *
- * // once per client tick:
- * manager.drainEvents();
- * }</pre>
+ * Owns the driver thread: {@link #submit} queues work for it, {@link #drainEvents} collects
+ * input. Decks are not scanned here; the {@link DeckTransport} reports them as
+ * {@link DeckEvent}s, routed through the same {@link #drainEvents} path.
  */
 @SuppressWarnings("unused")
 public final class StreamDeckManager implements AutoCloseable {
@@ -53,8 +33,8 @@ public final class StreamDeckManager implements AutoCloseable {
     public record DeckInfo(String id, DeckModel model) {}
 
     /**
-     * A manager wired to the shipped {@code RemoteDeckTransport}. Use this for the usual set-up;
-     * hand any other {@link DeckTransport} to the constructor instead.
+     * A manager wired to the shipped {@code RemoteDeckTransport}; hand any other
+     * {@link DeckTransport} to the constructor instead.
      */
     public static StreamDeckManager createDefault() {
         return new StreamDeckManager(new RemoteDeckTransport());
@@ -68,7 +48,7 @@ public final class StreamDeckManager implements AutoCloseable {
     private final Map<Class<? extends DeckEvent>, List<Consumer<DeckEvent>>> typed =
             new ConcurrentHashMap<>();
 
-    /** Deck map. Guarded by its own monitor because transport events and the driver thread touch it. */
+    /** Deck map, guarded by its own monitor. */
     private final Map<String, StreamDeck> decks = new LinkedHashMap<>();
 
     private volatile List<DeckInfo> connected = List.of();
@@ -156,6 +136,15 @@ public final class StreamDeckManager implements AutoCloseable {
         submitAll(StreamDeck::reset);
     }
 
+    /**
+     * Asks the app to leave Modspace, restoring the bound deck's previous profile. Queued like
+     * every other piece of transport work so it runs on the driver thread. Drops silently while
+     * disconnected.
+     */
+    public void exitModspace() {
+        submit(transport::exit);
+    }
+
     /** Queues work that needs no deck, run in order with the rest. */
     public void submit(Runnable work) {
         commands.add(work);
@@ -192,8 +181,7 @@ public final class StreamDeckManager implements AutoCloseable {
 
     /**
      * Registers a handler for exactly one {@link DeckEvent} record type, e.g.
-     * {@code manager.on(DeckEvent.KeyDown.class, key -> ...)}. No match over the sealed type
-     * needed. Fires on whichever thread calls {@link #drainEvents}, like {@link #addListener}.
+     * {@code manager.on(DeckEvent.KeyDown.class, key -> ...)}.
      */
     public <T extends DeckEvent> void on(Class<T> type, Consumer<? super T> handler) {
         List<Consumer<DeckEvent>> handlers =

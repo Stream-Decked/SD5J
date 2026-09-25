@@ -10,7 +10,7 @@ import javax.imageio.stream.MemoryCacheImageOutputStream;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -27,7 +27,7 @@ public final class DeckImageCodec {
     /** JPEG quality used for key and screen images. 0.9 looks clean at these sizes. */
     public static volatile float jpegQuality = 0.9f;
 
-    private static final Map<DeckModel, byte[]> BLANK_KEY_CACHE = new EnumMap<>(DeckModel.class);
+    private static final Map<DeckModel, byte[]> BLANK_KEY_CACHE = new HashMap<>();
 
     /** Encodes an image for a key of this device. Resizes and reorients as needed. */
     public static byte[] encodeKey(DeckModel model, DeckImage image) {

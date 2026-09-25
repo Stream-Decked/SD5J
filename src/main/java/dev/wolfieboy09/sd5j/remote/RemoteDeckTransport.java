@@ -19,8 +19,10 @@ import java.net.http.WebSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,19 +30,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * {@link DeckTransport} backed by the Stream Deck app bridge: a WebSocket client to the local
- * plugin server. This is what replaced the HID backend. Frames use Gson, which the embedding
- * runtime (Minecraft) already provides.
- *
- * <p>Connection facts come from the pairing file the plugin writes
- * ({@link #DEFAULT_PAIRING_FILE}), which holds the port and the handshake token. The token is
- * the first frame of the connection ({@code hello}); the plugin closes the socket on a
- * mismatch, so this client simply aborts and retries like any other failed connection.</p>
- *
- * <p>The client connects as one deck session. The plugin assigns it a free deck on
- * {@code helloOk} and reports it back here as a {@link DeckEvent.Connected}; input travels the
- * same way ({@code keyDown}/{@code keyUp}). While the server is unreachable the client logs
- * "no Stream Deck server found" and retries with capped backoff, re-reading the pairing file
- * on each attempt so a plugin restart (new port and token) is picked up automatically.</p>
+ * plugin server. Connection facts come from the pairing file the plugin writes
+ * ({@link #DEFAULT_PAIRING_FILE}), re-read on every attempt so a plugin restart (new port and
+ * token) is picked up automatically.
  */
 @SuppressWarnings("unused")
 public final class RemoteDeckTransport implements DeckTransport {
@@ -50,7 +42,7 @@ public final class RemoteDeckTransport implements DeckTransport {
     public static final String DEFAULT_PAIRING_FILE =
             Path.of(System.getProperty("user.home"), ".streamdecked", "pairing.json").toString();
     private static final String DEFAULT_CLIENT_NAME = "minecraft";
-    private static final String LIB_VERSION = "1.0.0";
+    private static final String LIB_VERSION = "1.1.0";
 
     private static final long CONNECT_TIMEOUT_MS = 10_000;
     private static final long MIN_BACKOFF_MS = 1_000;
@@ -68,6 +60,9 @@ public final class RemoteDeckTransport implements DeckTransport {
     private volatile String boundDeckId;
     private volatile DeckModel boundModel;
     private volatile Thread thread;
+
+    /** Page-0 surface kept in sync by {@link #setKeyImage}, re-uploaded on {@code surface {request:true}}. */
+    private final ConcurrentHashMap<Integer, String> painted = new ConcurrentHashMap<>();
 
     public RemoteDeckTransport() {
         this(DEFAULT_PAIRING_FILE, DEFAULT_CLIENT_NAME);
@@ -111,12 +106,13 @@ public final class RemoteDeckTransport implements DeckTransport {
 
     @Override
     public void setKeyImage(int key, byte[] encoded) {
+        String imageBase64 = Base64.getEncoder().encodeToString(encoded);
+        painted.put(key, imageBase64);
         WebSocket ws = socket.get();
         if (ws == null || !connected.get()) {
             LOGGER.debug("dropping setImage for key {} while disconnected", key);
             return;
         }
-        String imageBase64 = Base64.getEncoder().encodeToString(encoded);
         JsonObject frame = new JsonObject();
         frame.addProperty("type", "setImage");
         frame.addProperty("key", key);
@@ -143,6 +139,19 @@ public final class RemoteDeckTransport implements DeckTransport {
     @Override
     public void reset() {
         LOGGER.debug("device reset is handled by the app; ignoring reset()");
+    }
+
+    @Override
+    public void exit() {
+        WebSocket ws = socket.get();
+        if (ws == null || !connected.get()) {
+            LOGGER.debug("dropping exit while disconnected");
+            return;
+        }
+        JsonObject frame = new JsonObject();
+        frame.addProperty("type", "exit");
+        ws.sendText(GSON.toJson(frame), true);
+        LOGGER.info("asked the plugin to leave Modspace and restore the previous profile");
     }
 
     @Override
@@ -216,6 +225,7 @@ public final class RemoteDeckTransport implements DeckTransport {
             case "deckDisconnect" -> handleDeckDisconnect(frame);
             case "keyDown" -> emitKey(true, frame);
             case "keyUp" -> emitKey(false, frame);
+            case "surface" -> handleSurfaceRequest(frame);
             case "error" -> LOGGER.warn("plugin reported an error: {}", string(frame, "message"));
             case null, default -> LOGGER.debug("ignoring unknown frame type: {}", string(frame, "type"));
         }
@@ -257,6 +267,29 @@ public final class RemoteDeckTransport implements DeckTransport {
         emit(new DeckEvent.Disconnected(deckId, was));
     }
 
+    private void handleSurfaceRequest(JsonObject frame) {
+        if (!bool(frame, "request")) return;
+        JsonObject reply = new JsonObject();
+        reply.addProperty("type", "surface");
+        reply.addProperty("activePage", 0);
+        JsonArray pages = new JsonArray();
+        JsonObject page = new JsonObject();
+        page.addProperty("page", 0);
+        JsonArray buttons = new JsonArray();
+        for (Map.Entry<Integer, String> entry : painted.entrySet()) {
+            JsonObject button = new JsonObject();
+            button.addProperty("key", entry.getKey());
+            button.addProperty("page", 0);
+            button.addProperty("imageBase64", entry.getValue());
+            buttons.add(button);
+        }
+        page.add("buttons", buttons);
+        pages.add(page);
+        reply.add("pages", pages);
+        WebSocket ws = socket.get();
+        if (ws != null) ws.sendText(GSON.toJson(reply), true);
+    }
+
     private void bind(DeckEvent.Connected connected) {
         if (connected.model() == null) {
             LOGGER.debug("ignoring deck \"{}\": unknown model", connected.deckId());
@@ -280,7 +313,14 @@ public final class RemoteDeckTransport implements DeckTransport {
     }
 
     private DeckModel modelOf(JsonObject object) {
-        return DeckModel.fromDisplayName(string(object, "model"));
+        DeckModel canonical = DeckModel.fromDisplayName(string(object, "model"));
+        int columns = integer(object, "columns");
+        int rows = integer(object, "rows");
+        if (bool(object, "generic")
+                || (columns > 0 && rows > 0 && canonical != null && canonical.keyCount() != columns * rows)) {
+            return DeckModel.generic(string(object, "model"), columns, rows);
+        }
+        return canonical;
     }
 
     private void emit(DeckEvent event) {
@@ -316,6 +356,12 @@ public final class RemoteDeckTransport implements DeckTransport {
         JsonElement element = object.get(key);
         return element != null && element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()
                 ? element.getAsInt() : 0;
+    }
+
+    private static boolean bool(JsonObject object, String key) {
+        JsonElement element = object.get(key);
+        return element != null && element.isJsonPrimitive() && element.getAsJsonPrimitive().isBoolean()
+                ? element.getAsBoolean() : false;
     }
 
     private record Pairing(int port, String token) {}

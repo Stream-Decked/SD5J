@@ -16,12 +16,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 /**
- * A deck's keys as assignable slots with a page stack on top. Owning the panel this way keeps
- * redraws cheap: only changed slots are re-encoded and uploaded; unassigned keys draw black.
- * Safe to call from the game thread; rendering and uploading happen on the driver thread.
- *
- * <p>Each key slot is also addressable by a name on the page currently showing, so addons can
- * add or remove buttons at runtime and mutate their icons without tracking key indices.</p>
+ * A deck's keys as assignable slots with a page stack on top. Only changed slots are
+ * re-encoded and uploaded; unassigned keys draw black. Each key is also addressable by name
+ * on the page currently showing, so buttons can be added or removed without tracking indices.
  */
 @SuppressWarnings("unused")
 @CanIgnoreReturnValue
@@ -84,14 +81,11 @@ public final class DeckSurface {
     // Named buttons
     // ------------------------------------------------------------------
     //
-    // A name addresses a single key on the page currently showing. The same name may exist on
-    // different pages, folders, or decks. Auto-placement skips the keys reserved for the
-    // folder's back/next/previous navigation.
+    // A name addresses a single key on the current page; auto-placement skips navigation keys.
 
     /**
-     * Creates a button and adds it to the current page under a name, on the first free key
-     * that is not reserved for navigation. Returns the button so its icon and action can be
-     * mutated at any time; mutations redraw the key automatically.
+     * Creates a button under a name on the current page's first free key and returns it for
+     * later mutation.
      *
      * @throws IllegalArgumentException if the page already has a button under this name
      * @throws IllegalStateException    if every key on the page is taken
@@ -101,9 +95,8 @@ public final class DeckSurface {
     }
 
     /**
-     * Places an existing {@link NamedButton} on the current page under its own name, on the
-     * first free key that is not reserved for navigation. The same instance may be placed on
-     * several pages or decks; mutating it redraws wherever it currently shows.
+     * Places an existing {@link NamedButton} under its own name on the current page's first
+     * free key; the same instance may be placed on several pages or decks.
      *
      * @throws IllegalArgumentException if the page already has a button under this name
      * @throws IllegalStateException    if every key on the page is taken
@@ -152,10 +145,22 @@ public final class DeckSurface {
     /** Alias of {@link #removeButton(String)}. */
     public boolean clearButton(String name) { return removeButton(name); }
 
-    /** Swaps the icon of the named button on the current page, if one exists. */
-    public void setButtonIcon(String name, DeckImage icon) {
+    /** Swaps the icon of the named button on the current page, if one exists. Null clears it. */
+    public void setButtonIcon(String name, @Nullable DeckImage icon) {
         NamedButton button = button(name);
         if (button != null) button.setIcon(icon);
+    }
+
+    /** Sets the caption of the named button on the current page, if one exists. Null clears it. */
+    public void setButtonCaption(String name, @Nullable String caption) {
+        NamedButton button = button(name);
+        if (button != null) button.setCaption(caption);
+    }
+
+    /** Sets the caption of the named button and its text colour. */
+    public void setButtonCaption(String name, @Nullable String caption, int captionArgb) {
+        NamedButton button = button(name);
+        if (button != null) button.setCaption(caption, captionArgb);
     }
 
     /** Replaces the press action of the named button on the current page, if one exists. */
@@ -206,11 +211,10 @@ public final class DeckSurface {
     // Folders and pages
     // ------------------------------------------------------------------
     //
-    // A "folder" is a level you can descend into and come back from (back() returns to
-    // wherever you were, including which page of the parent was showing). A "page" is one of
-    // several sibling layouts *within* the current folder that nextPage()/previousPage() cycle
-    // between, without changing the folder stack. The base/root level is itself just a folder
-    // with nothing above it; back() at the root does nothing and returns false.
+    // A "folder" is a level you descend into and come back from (back() restores where you
+    // were). A "page" is one of several sibling layouts within a folder that nextPage() and
+    // previousPage() cycle between. The root level is itself a folder; back() there does
+    // nothing.
 
     /**
      * One page's worth of assignments, both by key and by name. The page maps are
@@ -290,30 +294,19 @@ public final class DeckSurface {
 
     private Page currentPage() { return pages.get(pageIndex); }
 
-    /**
-     * True if the key is used by the folder system's back/next/previous navigation. The back
-     * key is always off limits: every folder page gets one when the driver packages a layout,
-     * even folders built from a depth-0 capture surface. The prev/next keys matter once a page
-     * may have siblings.
-     */
+    /** True if the key is used by back/next/previous navigation. */
     private boolean isReservedKey(int key) {
         int backKey = keyCount() - model.columns();
         if (key == backKey) return true;
         return pageCount() > 1 && (key == backKey + 1 || key == keyCount() - 1);
     }
 
-    /**
-     * Descends into a folder with a single page. The current level (including whichever page of
-     * it was showing) is remembered and restored by {@link #back()}.
-     */
+    /** Descends into a single-page folder; the current level is restored by {@link #back()}. */
     public void openFolder(Map<Integer, DeckButton> page) {
         openFolder(List.of(page));
     }
 
-    /**
-     * Descends into a folder with several sibling pages, showing the first. Use
-     * {@link #nextPage()} / {@link #previousPage()} to move between them once inside.
-     */
+    /** Descends into a multi-page folder, showing the first page. */
     public void openFolder(List<Map<Integer, DeckButton>> newPages) {
         if (newPages == null || newPages.isEmpty()) {
             throw new IllegalArgumentException("a folder needs at least one page");
@@ -327,9 +320,8 @@ public final class DeckSurface {
     }
 
     /**
-     * Leaves the current folder, restoring the parent level exactly as it was (including which
-     * of its pages was showing). Returns false if already at the root, in which case nothing
-     * happens.
+     * Leaves the current folder, restoring the parent level exactly as it was. Returns false
+     * at the root.
      */
     public boolean back() {
         Frame parent = folderStack.poll();
@@ -346,10 +338,7 @@ public final class DeckSurface {
     /** How many folders deep the current level is; 0 at the root. */
     public int folderDepth() { return folderStack.size(); }
 
-    /**
-     * Moves to the next sibling page within the current folder, wrapping around. Returns false
-     * (and does nothing) if the current folder only has one page.
-     */
+    /** Moves to the next sibling page, wrapping around. No-op for single-page folders. */
     public boolean nextPage() {
         if (pages.size() <= 1) return false;
         pageIndex = (pageIndex + 1) % pages.size();
@@ -373,11 +362,7 @@ public final class DeckSurface {
         return true;
     }
 
-    /**
-     * Appends a new, initially empty page to the current folder and switches to it. Useful when
-     * building a folder's content up front, e.g. inside {@link DeckLayout#populate}, rather than
-     * reacting to {@link #nextPage()} calls at runtime.
-     */
+    /** Appends a new, initially empty page to the current folder and switches to it. */
     public void addPage() {
         List<Page> updated = new ArrayList<>(pages);
         updated.add(new Page());
@@ -386,10 +371,7 @@ public final class DeckSurface {
         applyCurrentPage();
     }
 
-    /**
-     * A snapshot of every page in the current folder. Used to pull a folder's content back out
-     * after a {@link DeckLayout#populate} call finishes.
-     */
+    /** A snapshot of every page in the current folder. Used to pull a folder back out after a populate pass. */
     public List<Map<Integer, DeckButton>> exportPages() {
         List<Map<Integer, DeckButton>> out = new ArrayList<>(pages.size());
         for (Page page : pages) out.add(page.asMap());
@@ -402,11 +384,7 @@ public final class DeckSurface {
     /** Index of the page currently showing within the current folder. */
     public int currentPageIndex() { return pageIndex; }
 
-    /**
-     * Replaces the base level's pages outright and clears the whole folder stack; there is
-     * nothing to {@link #back()} to after this. Use to (re)define what the deck shows with
-     * nothing open, e.g. from a layout's {@link DeckLayout#populate}.
-     */
+    /** Replaces the base level's pages outright, clearing the folder stack. */
     public void setRootPages(List<Map<Integer, DeckButton>> rootPages) {
         folderStack.clear();
         List<Page> converted = new ArrayList<>();
@@ -450,12 +428,7 @@ public final class DeckSurface {
     // Input
     // ------------------------------------------------------------------
 
-    /**
-     * Routes an event to the assigned button. Feed everything from
-     * {@link StreamDeckManager#drainEvents} through here.
-     *
-     * @return true if this surface handled the event
-     */
+    /** Routes an event to the assigned button; feed everything from {@link StreamDeckManager#drainEvents} through here. */
     public boolean handle(DeckEvent event) {
         if (!deckId.equals(event.deckId())) return false;
 

@@ -28,7 +28,7 @@ public interface DeckButton {
     static DeckButton of(DeckImage image, Runnable onPress) {
         return new DeckButton() {
             @Override public DeckImage render(int width, int height) {
-                return image.fitInto(width, height, 0xFF000000);
+                return image.pixelFitInto(width, height, 0xFF000000);
             }
             @Override public void onDown(DeckSurface surface, int key) {
                 if (onPress != null) onPress.run();
@@ -52,17 +52,17 @@ public interface DeckButton {
     static DeckButton labelled(DeckImage icon, String label, Runnable onPress) {
         return new DeckButton() {
             @Override public DeckImage render(int width, int height) {
-                DeckImage out = DeckImage.black(width, height);
-                int captionHeight = Math.max(14, height / 4);
-                out.draw(icon.fitInto(width, height - captionHeight, 0xFF000000), 0, 0);
-                DeckText.drawWrapped(out, label, DeckText.DEFAULT_FONT.deriveFont((float) captionHeight - 2),
-                        0xFFFFFFFF, 2, height - captionHeight, width, captionHeight);
-                return out;
+                return DeckText.iconWithCaption(icon, label, width, height, 0xFFFFFFFF);
             }
             @Override public void onDown(DeckSurface surface, int key) {
                 if (onPress != null) onPress.run();
             }
         };
+    }
+
+    /** Icon with a caption, for a button whose icon or caption changes later. See {@link NamedButton#setCaption}. */
+    static NamedButton named(String name, DeckImage icon, String caption, Runnable onPress) {
+        return new NamedButton(name, icon, onPress).setCaption(caption);
     }
 
     // ------------------------------------------------------------------

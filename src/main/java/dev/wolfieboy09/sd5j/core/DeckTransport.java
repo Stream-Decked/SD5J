@@ -3,15 +3,10 @@ package dev.wolfieboy09.sd5j.core;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * What the deck driver talks through. Ripping out direct HID ownership replaced every
- * hardware-facing call on {@link StreamDeck} (draw a key, set the brightness, reset, read
- * input) with this seam; the shipped implementation, {@code RemoteDeckTransport}, drives a
- * real deck through the Stream Deck app over a local WebSocket instead of claiming the device.
- *
- * <p>A {@link DeckTransport} represents the connection to the controlling app session, which is bound to
- * at most one deck ({@link #boundDeckId()} / {@link #boundModel()}). Decks are assigned and
- * recalled by the plugin, then reported here as {@link DeckEvent.Connected} and
- * {@link DeckEvent.Disconnected}; input arrives the same way, as pushed {@link DeckEvent}s.</p>
+ * The seam the deck driver talks through; the shipped implementation, {@code RemoteDeckTransport},
+ * drives a real deck through the Stream Deck app over a local WebSocket. A transport is bound to
+ * at most one deck at a time ({@link #boundDeckId()} / {@link #boundModel()}), reported as
+ * {@link DeckEvent.Connected} and {@link DeckEvent.Disconnected}.
  */
 public interface DeckTransport extends AutoCloseable {
 
@@ -44,6 +39,13 @@ public interface DeckTransport extends AutoCloseable {
 
     /** Returns the deck to its idle state. Currently unused by the wire protocol. */
     void reset();
+
+    /**
+     * Asks the host app to leave Modspace, restoring the deck's previous profile. A no-op while
+     * disconnected. The shipped transport sends an {@code exit} frame the plugin answers by
+     * switching the deck back.
+     */
+    void exit();
 
     /** Connects the transport's event stream to a listener, or detaches it with null. */
     void setListener(@Nullable Listener listener);

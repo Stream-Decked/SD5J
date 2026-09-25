@@ -6,13 +6,9 @@ import dev.wolfieboy09.sd5j.core.image.DeckImageCodec;
 import javax.annotation.concurrent.NotThreadSafe;
 
 /**
- * A single bound deck session.
- *
- * <p>Thin over a {@link DeckTransport}: every hardware-facing call (draw a key, set the
- * brightness, reset) is delegated to the transport, which in this project is the remote
- * WebSocket client. Encoding still happens here and on the caller's thread; in a game you
- * almost certainly want {@link StreamDeckManager} instead, which keeps this object off the
- * render thread.</p>
+ * A single bound deck session, thin over a {@link DeckTransport}. Encoding happens on the
+ * caller's thread; in a game use {@link StreamDeckManager}, which keeps this off the render
+ * thread.
  *
  * <p>Not thread safe.</p>
  */

@@ -1,6 +1,7 @@
 package dev.wolfieboy09.sd5j.core;
 
 import dev.wolfieboy09.sd5j.core.image.DeckImage;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.awt.font.FontRenderContext;
@@ -86,6 +87,28 @@ public final class DeckText {
         int[] px = new int[target.width() * target.height()];
         canvas.getRGB(0, 0, target.width(), target.height(), px, 0, target.width());
         System.arraycopy(px, 0, target.pixels(), 0, px.length);
+    }
+
+    /**
+     * Icon above a caption strip along the bottom, both centred. The icon keeps its pixels
+     * (nearest-neighbor) because Minecraft textures are pixel art. A null or blank caption
+     * gives the whole key to the icon, and a null icon degrades to a text-only label, so
+     * callers can hand over a texture lookup that came back empty without branching.
+     */
+    public static DeckImage iconWithCaption(@Nullable DeckImage icon, @Nullable String caption,
+                                             int width, int height, int captionArgb) {
+        if (caption == null || caption.isBlank()) {
+            if (icon == null) return DeckImage.filled(width, height, 0xFF000000);
+            return icon.pixelFitInto(width, height, 0xFF000000);
+        }
+        if (icon == null) return label(width, height, caption, DEFAULT_FONT, captionArgb, 0xFF000000, 2);
+
+        int strip = Math.max(14, height / 4);
+        DeckImage out = DeckImage.black(width, height);
+        out.draw(icon.pixelFitInto(width, height - strip, 0xFF000000), 0, 0);
+        drawWrapped(out, caption, DEFAULT_FONT.deriveFont((float) strip - 2),
+                captionArgb, 2, height - strip, width, strip);
+        return out;
     }
 
     private static int lineHeight(Graphics2D g, Font font) {
