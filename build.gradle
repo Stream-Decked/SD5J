@@ -46,4 +46,14 @@ publishing {
             url "file://${project.projectDir}/repo"
         }
     }
+    repositories {
+        maven {
+            name = "cloudsmith"
+            url = uri("https://maven.cloudsmith.io/wolfieboy09/sd5j/")
+            credentials {
+                username = "${project.property("cloudsmith.username")}"
+                password = "${project.property("cloudsmith.publishing.apiKey")}"
+            }
+        }
+    }
 }

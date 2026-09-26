@@ -42,7 +42,7 @@ public final class RemoteDeckTransport implements DeckTransport {
     public static final String DEFAULT_PAIRING_FILE =
             Path.of(System.getProperty("user.home"), ".streamdecked", "pairing.json").toString();
     private static final String DEFAULT_CLIENT_NAME = "minecraft";
-    private static final String LIB_VERSION = "1.1.0";
+    private static final String LIB_VERSION = "1.0.0";
 
     private static final long CONNECT_TIMEOUT_MS = 10_000;
     private static final long MIN_BACKOFF_MS = 1_000;
@@ -225,6 +225,10 @@ public final class RemoteDeckTransport implements DeckTransport {
             case "deckDisconnect" -> handleDeckDisconnect(frame);
             case "keyDown" -> emitKey(true, frame);
             case "keyUp" -> emitKey(false, frame);
+            case "encoderDown" -> emitEncoder(frame, true);
+            case "encoderUp" -> emitEncoder(frame, false);
+            case "encoderRotate" -> emitEncoderRotate(frame);
+            case "screenTap" -> emitScreenTap(frame);
             case "surface" -> handleSurfaceRequest(frame);
             case "error" -> LOGGER.warn("plugin reported an error: {}", string(frame, "message"));
             case null, default -> LOGGER.debug("ignoring unknown frame type: {}", string(frame, "type"));
@@ -310,6 +314,31 @@ public final class RemoteDeckTransport implements DeckTransport {
         } else {
             emit(new DeckEvent.KeyUp(deckId, boundModel, key));
         }
+    }
+
+    private void emitEncoder(JsonObject frame, boolean down) {
+        if (boundDeckId == null || boundModel == null) return;
+        int encoder = integer(frame, "encoder");
+        emit(down
+                ? new DeckEvent.EncoderDown(boundDeckId, boundModel, encoder)
+                : new DeckEvent.EncoderUp(boundDeckId, boundModel, encoder));
+    }
+
+    private void emitEncoderRotate(JsonObject frame) {
+        if (boundDeckId == null || boundModel == null) return;
+        int delta = integer(frame, "ticks");
+        if (delta == 0) return;
+        emit(new DeckEvent.EncoderTurn(boundDeckId, boundModel, integer(frame, "encoder"), delta));
+    }
+
+    private void emitScreenTap(JsonObject frame) {
+        if (boundDeckId == null || boundModel == null) return;
+        int x = integer(frame, "x");
+        int y = integer(frame, "y");
+        // The app reports one boolean rather than separate tap and hold events.
+        emit(bool(frame, "hold")
+                ? new DeckEvent.ScreenHold(boundDeckId, boundModel, x, y)
+                : new DeckEvent.ScreenTap(boundDeckId, boundModel, x, y));
     }
 
     private DeckModel modelOf(JsonObject object) {

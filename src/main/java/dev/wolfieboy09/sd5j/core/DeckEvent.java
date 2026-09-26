@@ -22,11 +22,6 @@ public sealed interface DeckEvent {
 
     record KeyUp(String deckId, DeckModel model, int key) implements DeckEvent {}
 
-    /** Capacitive touch point on a Neo, indexed from 0 (left of the keys). */
-    record TouchPointDown(String deckId, DeckModel model, int point) implements DeckEvent {}
-
-    record TouchPointUp(String deckId, DeckModel model, int point) implements DeckEvent {}
-
     /** Rotary encoder pressed in (Stream Deck +). */
     record EncoderDown(String deckId, DeckModel model, int encoder) implements DeckEvent {}
 
@@ -39,6 +34,4 @@ public sealed interface DeckEvent {
     record ScreenTap(String deckId, DeckModel model, int x, int y) implements DeckEvent {}
 
     record ScreenHold(String deckId, DeckModel model, int x, int y) implements DeckEvent {}
-
-    record ScreenSwipe(String deckId, DeckModel model, int fromX, int fromY, int toX, int toY) implements DeckEvent {}
 }

@@ -27,8 +27,5 @@ public sealed interface DeckInput {
     /** Press and hold on the touch strip. */
     record TouchHold(int x, int y) implements DeckInput {}
 
-    /** Drag across the touch strip. */
-    record TouchSwipe(int fromX, int fromY, int toX, int toY) implements DeckInput {}
-
     DeckInput NONE = new None();
 }
