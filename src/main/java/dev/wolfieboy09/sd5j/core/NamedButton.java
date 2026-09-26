@@ -60,7 +60,7 @@ public final class NamedButton implements DeckButton {
         return this;
     }
 
-    /** Sets the caption and its text colour. */
+    /** Sets the caption and its text color. */
     public NamedButton setCaption(@Nullable String caption, int captionArgb) {
         this.captionArgb = captionArgb;
         return setCaption(caption);

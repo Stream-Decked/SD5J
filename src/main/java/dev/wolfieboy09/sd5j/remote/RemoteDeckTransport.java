@@ -42,7 +42,7 @@ public final class RemoteDeckTransport implements DeckTransport {
     public static final String DEFAULT_PAIRING_FILE =
             Path.of(System.getProperty("user.home"), ".streamdecked", "pairing.json").toString();
     private static final String DEFAULT_CLIENT_NAME = "minecraft";
-    private static final String LIB_VERSION = "1.0.0";
+    private static final String LIB_VERSION = "1.0.1";
 
     private static final long CONNECT_TIMEOUT_MS = 10_000;
     private static final long MIN_BACKOFF_MS = 1_000;
@@ -389,8 +389,7 @@ public final class RemoteDeckTransport implements DeckTransport {
 
     private static boolean bool(JsonObject object, String key) {
         JsonElement element = object.get(key);
-        return element != null && element.isJsonPrimitive() && element.getAsJsonPrimitive().isBoolean()
-                ? element.getAsBoolean() : false;
+        return element != null && element.isJsonPrimitive() && element.getAsJsonPrimitive().isBoolean() && element.getAsBoolean();
     }
 
     private record Pairing(int port, String token) {}

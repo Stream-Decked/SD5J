@@ -157,7 +157,7 @@ public final class DeckSurface {
         if (button != null) button.setCaption(caption);
     }
 
-    /** Sets the caption of the named button and its text colour. */
+    /** Sets the caption of the named button and its text color. */
     public void setButtonCaption(String name, @Nullable String caption, int captionArgb) {
         NamedButton button = button(name);
         if (button != null) button.setCaption(caption, captionArgb);
@@ -306,7 +306,7 @@ public final class DeckSurface {
         openFolder(List.of(page));
     }
 
-    /** Descends into a multi-page folder, showing the first page. */
+    /** Descends into a multipage folder, showing the first page. */
     public void openFolder(List<Map<Integer, DeckButton>> newPages) {
         if (newPages == null || newPages.isEmpty()) {
             throw new IllegalArgumentException("a folder needs at least one page");
