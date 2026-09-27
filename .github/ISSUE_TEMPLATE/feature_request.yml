@@ -1,0 +1,49 @@
+name: Feature request
+description: Ask for something new in the SDK.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    value: |
+      The SDK is deliberately small. A proposal is much more likely to land if it explains
+      what the caller is trying to do rather than only what API they want.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The goal, not the API. What does the code do today, and what is painful?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would the API look like?
+      description: A sketch is fine. Include how it reads at the call site.
+      render: java
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Which part of the SDK?
+      options:
+        - Buttons and layouts
+        - Deck model and geometry
+        - Images and text
+        - Input and events
+        - Transport and connection
+        - Build or packaging
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What have you tried instead?
+      description: Workarounds you are using now, or an existing plugin that does this.
+    validations:
+      required: false

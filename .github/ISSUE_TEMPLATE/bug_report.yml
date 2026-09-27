@@ -1,0 +1,102 @@
+name: Bug report
+description: Something in the SDK behaves differently from how it is documented.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    value: |
+      SD5J is the pure-Java SDK. If the problem is with a mod that uses it, or with the
+      Stream Deck plugin, that belongs in that repository instead.
+
+  - type: input
+    id: sd5j-version
+    attributes:
+      label: SD5J version
+      description: The `sd5j` version your build depends on.
+      placeholder: "1.0.4"
+    validations:
+      required: true
+
+  - type: input
+    id: jvm
+    attributes:
+      label: JVM
+      description: Java version and vendor, for example `21.0.5 (Eclipse Temurin)`.
+      placeholder: "21.0.5 (Eclipse Temurin)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deck
+    attributes:
+      label: Stream Deck model
+      options:
+        - Stream Deck (original)
+        - Stream Deck Mini
+        - Stream Deck MK.2
+        - Stream Deck +
+        - Stream Deck XL
+        - Stream Deck Neo
+        - Not a Stream Deck / virtual
+        - Not relevant
+    validations:
+      required: true
+
+  - type: dropdown
+    id: context
+    attributes:
+      label: Where does this happen?
+      description: >
+        SD5J is used by the StreamDecked mod, by addons for other mods, and standalone.
+        This changes a lot about what can be going wrong.
+      options:
+        - Inside a Minecraft mod
+        - Standalone JVM
+        - Both
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Smallest piece of code that shows it
+      description: A few lines is better than the whole project.
+      render: java
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Stack trace or log output
+      description: >
+        Exceptions from the driver thread matter, since `DeckButton.render` runs there and
+        does not surface where the button was pressed.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked this against the latest published SD5J version.
+          required: false
+        - label: I can reproduce it without a Minecraft mod.
+          required: false
