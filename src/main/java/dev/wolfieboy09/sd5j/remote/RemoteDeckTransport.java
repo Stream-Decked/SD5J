@@ -6,9 +6,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
-import dev.wolfieboy09.sd5j.core.DeckEvent;
-import dev.wolfieboy09.sd5j.core.DeckModel;
-import dev.wolfieboy09.sd5j.core.DeckTransport;
+import dev.wolfieboy09.sd5j.deck.DeckModel;
+import dev.wolfieboy09.sd5j.event.DeckEvent;
+import dev.wolfieboy09.sd5j.transport.DeckTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

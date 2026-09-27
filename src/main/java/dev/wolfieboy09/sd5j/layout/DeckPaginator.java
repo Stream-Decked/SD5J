@@ -1,5 +1,7 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.layout;
 
+import dev.wolfieboy09.sd5j.button.DeckButton;
+import dev.wolfieboy09.sd5j.deck.DeckModel;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -14,9 +16,13 @@ import java.util.function.Function;
  * Splits a list into as many pages of keys as the deck can hold, and builds the page maps that
  * {@link DeckSurface#openFolder(List, String)} and {@link DeckSurface#replacePages(List)} take.
  *
- * <p>Back is always reserved, even with no button for it, because that is the key a folder page
- * gives to Back. Next and previous are reserved once you pass a button for them, and drawn only
- * when the list needs more than one page.
+ * <p>Back and next are added for you in {@link DeckNavStyle#DEFAULT}, recolourable with
+ * {@link #nav(DeckNavStyle)}; next is drawn only once the list needs a second page. Previous is
+ * not added, because it costs a content key, so ask for it with {@link #previous}. Pass
+ * {@link #noNavigation()} to supply your own or none at all.
+ *
+ * <p>Back's key is reserved even with no button for it, because that is the key a folder page gives
+ * to Back.
  */
 @SuppressWarnings("unused")
 public final class DeckPaginator<T> {
@@ -24,9 +30,26 @@ public final class DeckPaginator<T> {
     private final List<T> items;
     private final Function<T, DeckButton> renderer;
 
-    private @Nullable DeckButton back;
-    private @Nullable DeckButton next;
-    private @Nullable DeckButton previous;
+    private DeckNavStyle style = DeckNavStyle.DEFAULT;
+    private Slot back = Slot.AUTO;
+    private Slot next = Slot.AUTO;
+    private Slot previous = Slot.OFF;
+
+    /** One navigation slot: absent, drawn from the style, or a button the caller supplied. */
+    private record Slot(boolean present, @Nullable DeckButton custom) {
+        static final Slot OFF = new Slot(false, null);
+        static final Slot AUTO = new Slot(true, null);
+
+        static Slot of(@Nullable DeckButton button) {
+            return button == null ? OFF : new Slot(true, button);
+        }
+
+        /** The button to draw here, or null when the slot is off. */
+        @Nullable DeckButton resolve(DeckButton automatic) {
+            if (!present) return null;
+            return custom != null ? custom : automatic;
+        }
+    }
 
     private DeckPaginator(DeckModel model, List<T> items, Function<T, DeckButton> renderer) {
         if (model == null) throw new IllegalArgumentException("a model is required");
@@ -42,21 +65,50 @@ public final class DeckPaginator<T> {
         return new DeckPaginator<>(model, items, renderer);
     }
 
+    /**
+     * Recolours the back, next and previous buttons this paginator draws for you. Applied when the
+     * pages are built, so it does not matter whether you set it before or after asking for a
+     * button. Buttons you supply yourself are left alone.
+     */
+    public DeckPaginator<T> nav(DeckNavStyle style) {
+        this.style = style == null ? DeckNavStyle.DEFAULT : style;
+        return this;
+    }
+
+    /** Recolours the automatic navigation buttons. See {@link #nav(DeckNavStyle)}. */
+    public DeckPaginator<T> colors(int textArgb, int backgroundArgb) {
+        return nav(new DeckNavStyle(textArgb, backgroundArgb));
+    }
+
     /** The back button, or null to leave the level with no way out. The key stays reserved either way. */
     public DeckPaginator<T> back(@Nullable DeckButton button) {
-        this.back = button;
+        this.back = Slot.of(button);
         return this;
     }
 
     /** The next-page button, drawn only when the list is paged. */
     public DeckPaginator<T> next(@Nullable DeckButton button) {
-        this.next = button;
+        this.next = Slot.of(button);
+        return this;
+    }
+
+    /** The previous-page button in the current style, drawn only when the list is paged. */
+    public DeckPaginator<T> previous() {
+        this.previous = Slot.AUTO;
         return this;
     }
 
     /** The previous-page button, drawn only when the list is paged. */
     public DeckPaginator<T> previous(@Nullable DeckButton button) {
-        this.previous = button;
+        this.previous = Slot.of(button);
+        return this;
+    }
+
+    /** Drops the automatic back and next, for a page whose navigation someone else supplies. */
+    public DeckPaginator<T> noNavigation() {
+        this.back = Slot.OFF;
+        this.next = Slot.OFF;
+        this.previous = Slot.OFF;
         return this;
     }
 
@@ -67,12 +119,12 @@ public final class DeckPaginator<T> {
         return items.size() > per;
     }
 
-    /** The keys navigation holds, whether a button was supplied for them. */
+    /** The keys navigation holds, whether or not a button is drawn on them. */
     public List<Integer> navigationKeys() {
         List<Integer> keys = new ArrayList<>(3);
         keys.add(model.backKey());
-        if (next != null) keys.add(model.nextKey());
-        if (previous != null) keys.add(model.previousKey());
+        if (next.present()) keys.add(model.nextKey());
+        if (previous.present()) keys.add(model.previousKey());
         return keys;
     }
 
@@ -126,12 +178,16 @@ public final class DeckPaginator<T> {
         List<Integer> slots = contentKeys();
         boolean paged = batches.size() > 1;
 
+        DeckButton backButton = back.resolve(style.back());
+        DeckButton nextButton = next.resolve(style.next());
+        DeckButton previousButton = previous.resolve(style.previous());
+
         List<Map<Integer, DeckButton>> built = new ArrayList<>(batches.size());
         for (List<T> batch : batches) {
             Map<Integer, DeckButton> page = new LinkedHashMap<>();
-            if (back != null) page.put(model.backKey(), back);
-            if (paged && next != null) page.put(model.nextKey(), next);
-            if (paged && previous != null) page.put(model.previousKey(), previous);
+            if (backButton != null) page.put(model.backKey(), backButton);
+            if (paged && nextButton != null) page.put(model.nextKey(), nextButton);
+            if (paged && previousButton != null) page.put(model.previousKey(), previousButton);
             for (int i = 0; i < batch.size() && i < slots.size(); i++) {
                 page.put(slots.get(i), renderer.apply(batch.get(i)));
             }

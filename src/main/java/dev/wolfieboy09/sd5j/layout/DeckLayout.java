@@ -1,4 +1,4 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.layout;
 
 /**
  * An addon's contribution to a deck: put buttons on a freshly connected panel. Registrations

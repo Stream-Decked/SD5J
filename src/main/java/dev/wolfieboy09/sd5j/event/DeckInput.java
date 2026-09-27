@@ -1,4 +1,6 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.event;
+
+import dev.wolfieboy09.sd5j.deck.StreamDeckManager;
 
 /**
  * A decoded input report, straight off the wire. These are absolute states, not changes;

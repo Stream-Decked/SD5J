@@ -1,7 +1,8 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.deck;
 
-import dev.wolfieboy09.sd5j.core.image.DeckImage;
-import dev.wolfieboy09.sd5j.core.image.DeckImageCodec;
+import dev.wolfieboy09.sd5j.image.DeckImage;
+import dev.wolfieboy09.sd5j.image.DeckImageCodec;
+import dev.wolfieboy09.sd5j.transport.DeckTransport;
 
 import javax.annotation.concurrent.NotThreadSafe;
 

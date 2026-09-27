@@ -1,6 +1,7 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.button;
 
-import dev.wolfieboy09.sd5j.core.image.DeckImage;
+import dev.wolfieboy09.sd5j.image.DeckImage;
+import dev.wolfieboy09.sd5j.layout.DeckSurface;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -88,12 +89,20 @@ public final class NamedButton implements DeckButton {
         if (host != null && key >= 0) host.redraw(key);
     }
 
-    void attach(DeckSurface surface, int key) {
+    /**
+     * Records the surface and key this button is placed on, so icon and caption changes redraw
+     * it. Called by {@link DeckSurface} as it places and moves the button; not for layouts.
+     */
+    public void attach(DeckSurface surface, int key) {
         this.surface = surface;
         this.key = key;
     }
 
-    void detach() {
+    /**
+     * Forgets the placement, so later changes stop redrawing a key the button no longer owns.
+     * Called by {@link DeckSurface} as it removes the button.
+     */
+    public void detach() {
         this.surface = null;
         this.key = -1;
     }

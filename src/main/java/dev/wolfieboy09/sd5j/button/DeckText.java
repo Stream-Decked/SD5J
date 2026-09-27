@@ -1,6 +1,6 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.button;
 
-import dev.wolfieboy09.sd5j.core.image.DeckImage;
+import dev.wolfieboy09.sd5j.image.DeckImage;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;

@@ -1,4 +1,6 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.event;
+
+import dev.wolfieboy09.sd5j.deck.DeckModel;
 
 /**
  * What a mod actually listens for: edges rather than states.

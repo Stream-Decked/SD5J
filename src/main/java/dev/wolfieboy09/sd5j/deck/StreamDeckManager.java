@@ -1,6 +1,9 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.deck;
 
+import dev.wolfieboy09.sd5j.button.DeckText;
+import dev.wolfieboy09.sd5j.event.DeckEvent;
 import dev.wolfieboy09.sd5j.remote.RemoteDeckTransport;
+import dev.wolfieboy09.sd5j.transport.DeckTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

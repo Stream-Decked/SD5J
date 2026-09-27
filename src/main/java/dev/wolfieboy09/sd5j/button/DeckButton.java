@@ -1,6 +1,9 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.button;
 
-import dev.wolfieboy09.sd5j.core.image.DeckImage;
+import dev.wolfieboy09.sd5j.deck.StreamDeckManager;
+import dev.wolfieboy09.sd5j.image.DeckImage;
+import dev.wolfieboy09.sd5j.layout.DeckNavStyle;
+import dev.wolfieboy09.sd5j.layout.DeckSurface;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -134,6 +137,11 @@ public interface DeckButton {
     }
 
     /** Leaves the current folder on press. See {@link DeckSurface#back()}. */
+    static DeckButton back() {
+        return DeckNavStyle.DEFAULT.back();
+    }
+
+    /** Leaves the current folder on press. See {@link DeckSurface#back()}. */
     static DeckButton back(DeckImage icon) {
         return new DeckButton() {
             @Override public DeckImage render(int width, int height) {
@@ -158,6 +166,11 @@ public interface DeckButton {
     }
 
     /** Cycles to the next sibling page on press. See {@link DeckSurface#nextPage()}. */
+    static DeckButton nextPage() {
+        return DeckNavStyle.DEFAULT.next();
+    }
+
+    /** Cycles to the next sibling page on press. See {@link DeckSurface#nextPage()}. */
     static DeckButton nextPage(DeckImage icon) {
         return new DeckButton() {
             @Override public DeckImage render(int width, int height) {
@@ -179,6 +192,11 @@ public interface DeckButton {
                 surface.nextPage();
             }
         };
+    }
+
+    /** Cycles to the previous sibling page on press. See {@link DeckSurface#previousPage()}. */
+    static DeckButton previousPage() {
+        return DeckNavStyle.DEFAULT.previous();
     }
 
     /** Cycles to the previous sibling page on press. See {@link DeckSurface#previousPage()}. */

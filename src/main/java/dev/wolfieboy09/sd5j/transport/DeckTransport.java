@@ -1,5 +1,9 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.transport;
 
+import dev.wolfieboy09.sd5j.deck.DeckModel;
+import dev.wolfieboy09.sd5j.event.DeckEvent;
+import dev.wolfieboy09.sd5j.image.DeckImageCodec;
+import dev.wolfieboy09.sd5j.remote.RemoteDeckTransport;
 import org.jetbrains.annotations.Nullable;
 
 /**

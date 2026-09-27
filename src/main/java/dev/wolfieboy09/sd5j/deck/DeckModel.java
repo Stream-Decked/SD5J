@@ -1,4 +1,4 @@
-package dev.wolfieboy09.sd5j.core;
+package dev.wolfieboy09.sd5j.deck;
 
 import org.jetbrains.annotations.Nullable;
 
