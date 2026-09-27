@@ -3,12 +3,12 @@ package dev.wolfieboy09.sd5j.image;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import dev.wolfieboy09.sd5j.deck.DeckModel;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-import javax.imageio.ImageIO;
 
 /**
  * A plain ARGB pixel buffer. Avoids {@code Graphics2D} so mods can scale, tint and stack
