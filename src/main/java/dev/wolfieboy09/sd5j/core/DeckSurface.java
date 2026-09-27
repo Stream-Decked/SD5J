@@ -498,21 +498,6 @@ public final class DeckSurface {
         redrawAll();
     }
 
-    /**
-     * @deprecated use {@link #openFolder(Map)}, which does the same thing under a clearer name
-     *             now that folders can also have multiple pages.
-     */
-    @Deprecated
-    public void pushPage(Map<Integer, DeckButton> page) { openFolder(page); }
-
-    /** @deprecated use {@link #back()}. */
-    @Deprecated
-    public boolean popPage() { return back(); }
-
-    /** @deprecated use {@link #folderDepth()}. */
-    @Deprecated
-    public int pageDepth() { return folderDepth(); }
-
     // ------------------------------------------------------------------
     // Input
     // ------------------------------------------------------------------
