@@ -286,11 +286,20 @@ public final class DeckSurface {
         }
     }
 
-    private record Frame(List<Page> pages, int pageIndex) {}
+    private record Frame(List<Page> pages, int pageIndex, @Nullable String folderId) {}
 
     private final Deque<Frame> folderStack = new ArrayDeque<>();
     private List<Page> pages = List.of(new Page());
     private int pageIndex = 0;
+
+    /**
+     * ID of the folder currently open, or null at the root and for folders opened without one.
+     *
+     * <p>This is what lets a layout that owns a folder recognize its own pages without planting
+     * a sentinel button on them: poll {@link #currentFolderId()} and compare. Ids are compared by
+     * value, so a layout can use its own registration id.
+     */
+    private @Nullable String folderId;
 
     private Page currentPage() { return pages.get(pageIndex); }
 
@@ -303,21 +312,43 @@ public final class DeckSurface {
 
     /** Descends into a single-page folder; the current level is restored by {@link #back()}. */
     public void openFolder(Map<Integer, DeckButton> page) {
-        openFolder(List.of(page));
+        openFolder(page, null);
+    }
+
+    /**
+     * Descends into a single-page folder under a known id, so the layout that owns it can tell
+     * when it is open. See {@link #currentFolderId()}.
+     */
+    public void openFolder(Map<Integer, DeckButton> page, @Nullable String id) {
+        openFolder(List.of(page), id);
     }
 
     /** Descends into a multipage folder, showing the first page. */
     public void openFolder(List<Map<Integer, DeckButton>> newPages) {
+        openFolder(newPages, null);
+    }
+
+    /** Descends into a multipage folder under a known id. See {@link #currentFolderId()}. */
+    public void openFolder(List<Map<Integer, DeckButton>> newPages, @Nullable String id) {
         if (newPages == null || newPages.isEmpty()) {
             throw new IllegalArgumentException("a folder needs at least one page");
         }
         List<Page> converted = new ArrayList<>(newPages.size());
         for (Map<Integer, DeckButton> page : newPages) converted.add(new Page(page));
-        folderStack.push(new Frame(pages, pageIndex));
+        folderStack.push(new Frame(pages, pageIndex, folderId));
         pages = converted;
         pageIndex = 0;
+        folderId = id;
         applyCurrentPage();
     }
+
+    /**
+     * ID of the folder currently open, or null at the root.
+     *
+     * <p>Lets a layout that owns a folder recognize its own pages, instead of having to leave a
+     * marker button on them to find out where the player is.
+     */
+    public @Nullable String currentFolderId() { return folderId; }
 
     /**
      * Leaves the current folder, restoring the parent level exactly as it was. Returns false
@@ -328,6 +359,7 @@ public final class DeckSurface {
         if (parent == null) return false;
         pages = parent.pages();
         pageIndex = parent.pageIndex();
+        folderId = parent.folderId();
         applyCurrentPage();
         return true;
     }
@@ -371,6 +403,28 @@ public final class DeckSurface {
         applyCurrentPage();
     }
 
+    /**
+     * Swaps the current level's pages for a new set, keeping the player on the same page index
+     * where that still exists.
+     *
+     * <p>This is for folders whose contents are worked out at runtime, such as a list of
+     * everything the player has learned: rebuild the pages and hand them back whenever the list
+     * changes size, and the deck re-paginates itself. The index is clamped rather than reset, so
+     * learning a spell does not throw the player back to the first page, and a shrinking list
+     * lands on the new last page. The folder id is left alone, so a layout that recognizes its
+     * own folder by {@link #currentFolderId()} stays recognized across the swap.
+     */
+    public void replacePages(List<Map<Integer, DeckButton>> newPages) {
+        if (newPages == null || newPages.isEmpty()) {
+            throw new IllegalArgumentException("a level needs at least one page");
+        }
+        List<Page> converted = new ArrayList<>(newPages.size());
+        for (Map<Integer, DeckButton> page : newPages) converted.add(new Page(page));
+        pages = converted;
+        pageIndex = Math.min(pageIndex, pages.size() - 1);
+        applyCurrentPage();
+    }
+
     /** A snapshot of every page in the current folder. Used to pull a folder back out after a populate pass. */
     public List<Map<Integer, DeckButton>> exportPages() {
         List<Map<Integer, DeckButton>> out = new ArrayList<>(pages.size());
@@ -387,6 +441,7 @@ public final class DeckSurface {
     /** Replaces the base level's pages outright, clearing the folder stack. */
     public void setRootPages(List<Map<Integer, DeckButton>> rootPages) {
         folderStack.clear();
+        folderId = null;
         List<Page> converted = new ArrayList<>();
         if (rootPages != null && !rootPages.isEmpty()) {
             for (Map<Integer, DeckButton> page : rootPages) converted.add(new Page(page));

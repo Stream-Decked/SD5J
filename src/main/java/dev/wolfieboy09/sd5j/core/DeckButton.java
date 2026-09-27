@@ -1,6 +1,7 @@
 package dev.wolfieboy09.sd5j.core;
 
 import dev.wolfieboy09.sd5j.core.image.DeckImage;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
@@ -74,14 +75,30 @@ public interface DeckButton {
         return folder(icon, List.of(page));
     }
 
+    /**
+     * Descends into a single-page folder tagged with an id on press, so the layout that owns it
+     * can recognize it later. See {@link DeckSurface#currentFolderId()}.
+     */
+    static DeckButton folder(DeckImage icon, Map<Integer, DeckButton> page, String id) {
+        return folder(icon, List.of(page), id);
+    }
+
     /** Descends into a multipage folder on press. See {@link DeckSurface#openFolder(List)}. */
     static DeckButton folder(DeckImage icon, List<Map<Integer, DeckButton>> pages) {
+        return folder(icon, pages, null);
+    }
+
+    /**
+     * Descends into a multipage folder tagged with an id on press, so the layout that owns it can
+     * recognize it later. See {@link DeckSurface#currentFolderId()}.
+     */
+    static DeckButton folder(DeckImage icon, List<Map<Integer, DeckButton>> pages, @Nullable String id) {
         return new DeckButton() {
             @Override public DeckImage render(int width, int height) {
                 return icon.pixelFitInto(width, height, 0xFF000000);
             }
             @Override public void onDown(DeckSurface surface, int key) {
-                surface.openFolder(pages);
+                surface.openFolder(pages, id);
             }
         };
     }
@@ -91,15 +108,27 @@ public interface DeckButton {
         return folder(label, textArgb, backgroundArgb, List.of(page));
     }
 
+    /** Text-label variant of {@link #folder(DeckImage, Map, String)}. */
+    static DeckButton folder(String label, int textArgb, int backgroundArgb,
+                             Map<Integer, DeckButton> page, String id) {
+        return folder(label, textArgb, backgroundArgb, List.of(page), id);
+    }
+
     /** Text-label variant of {@link #folder(DeckImage, List)}. */
     static DeckButton folder(String label, int textArgb, int backgroundArgb,
                              List<Map<Integer, DeckButton>> pages) {
+        return folder(label, textArgb, backgroundArgb, pages, null);
+    }
+
+    /** Text-label variant of {@link #folder(DeckImage, List, String)}. */
+    static DeckButton folder(String label, int textArgb, int backgroundArgb,
+                             List<Map<Integer, DeckButton>> pages, @Nullable String id) {
         return new DeckButton() {
             @Override public DeckImage render(int width, int height) {
                 return DeckText.label(width, height, label, textArgb, backgroundArgb);
             }
             @Override public void onDown(DeckSurface surface, int key) {
-                surface.openFolder(pages);
+                surface.openFolder(pages, id);
             }
         };
     }
