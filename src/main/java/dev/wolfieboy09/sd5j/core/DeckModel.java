@@ -142,5 +142,21 @@ public final class DeckModel {
     public int columnOf(int keyIndex)        { return keyIndex % columns; }
     public int rowOf(int keyIndex)           { return keyIndex / columns; }
 
+    // ------------------------------------------------------------------
+    // Navigation geometry
+    // ------------------------------------------------------------------
+    //
+    // The bottom row of keys is where navigation lives: back on the left, next on the right,
+    // and previous in between. These are the keys DeckSurface reserves, so a layout that puts
+    // content there is working against the library. Read them instead of recomputing them:
+    // previous is back + 1, which is NOT next - 1 on any deck with more than three columns.
+
+    /** Bottom-left key, reserved for back navigation. */
+    public int backKey()     { return keyCount() - columns; }
+    /** Bottom-right key, reserved for next-page navigation. */
+    public int nextKey()     { return keyCount() - 1; }
+    /** Key just right of {@link #backKey()}, reserved for previous-page navigation. */
+    public int previousKey() { return backKey() + 1; }
+
     @Override public String toString() { return displayName; }
 }

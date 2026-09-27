@@ -303,11 +303,45 @@ public final class DeckSurface {
 
     private Page currentPage() { return pages.get(pageIndex); }
 
-    /** True if the key is used by back/next/previous navigation. */
-    private boolean isReservedKey(int key) {
-        int backKey = keyCount() - model.columns();
-        if (key == backKey) return true;
-        return pageCount() > 1 && (key == backKey + 1 || key == keyCount() - 1);
+    // ------------------------------------------------------------------
+    // Navigation keys
+    // ------------------------------------------------------------------
+    //
+    // The bottom row belongs to navigation. These accessors say where, and contentKeys() says
+    // what is left, so a layout never has to re-derive the geometry. Note that previous is
+    // back + 1, not next - 1; on anything wider than three columns those are different keys.
+
+    /** Bottom-left key, reserved for back navigation. */
+    public int backKey()     { return model.backKey(); }
+    /** Bottom-right key, reserved for next-page navigation. */
+    public int nextKey()     { return model.nextKey(); }
+    /** Key reserved for previous-page navigation. */
+    public int previousKey() { return model.previousKey(); }
+
+    /**
+     * True if the key belongs to navigation, and so should be left alone.
+     *
+     * <p>Back always counts. Next and previous only count once the level actually has more than
+     * one page, so a single-page folder may still use them for content.
+     */
+    public boolean isReservedKey(int key) {
+        if (key == backKey()) return true;
+        return pageCount() > 1 && (key == previousKey() || key == nextKey());
+    }
+
+    /**
+     * Every key free for content on the level showing right now, in ascending order.
+     *
+     * <p>This is the live answer, so it grows when the level has only one page. For a stable
+     * figure that does not shift as a list grows, plan with
+     * {@link DeckPaginator#contentKeys()} instead.
+     */
+    public List<Integer> contentKeys() {
+        List<Integer> keys = new ArrayList<>(keyCount());
+        for (int key = 0; key < keyCount(); key++) {
+            if (!isReservedKey(key)) keys.add(key);
+        }
+        return keys;
     }
 
     /** Descends into a single-page folder; the current level is restored by {@link #back()}. */
