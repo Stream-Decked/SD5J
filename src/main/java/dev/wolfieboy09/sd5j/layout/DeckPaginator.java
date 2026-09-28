@@ -99,6 +99,21 @@ public final class DeckPaginator<T> {
         return this;
     }
 
+    /**
+     * Adds a previous-page button, unless reserving its key would leave the deck with no room for
+     * content. That only happens on a three-key pedal once back and next are also reserved.
+     *
+     * <p>Use this rather than {@link #previous()} when the deck is whatever the user happens to
+     * have plugged in, and the layout would rather drop Previous than fail.
+     *
+     * @return true if the button was added
+     */
+    public boolean previousIfRoom() {
+        if (navigationKeys().size() + 1 >= model.keyCount()) return false;
+        this.previous = Slot.AUTO;
+        return true;
+    }
+
     /** Drops the automatic back and next, for a page whose navigation someone else supplies. */
     public DeckPaginator<T> noNavigation() {
         this.back = Slot.OFF;
