@@ -53,7 +53,7 @@ manager.start();
 ```
 
 `createDefault()` connects over the WebSocket to the Stream Deck plugin, reading
-`~/.streamdecked/pairing.json`. Use `new StreamDeckManager(new RemoteDeckTransport(name))` if
+`~/.config/streamdecked/pairing.json`. Use `new StreamDeckManager(new RemoteDeckTransport(name))` if
 you want to name your client, and `close()` when you are done.
 
 ## What you get

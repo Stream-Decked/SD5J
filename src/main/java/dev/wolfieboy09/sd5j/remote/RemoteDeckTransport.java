@@ -31,7 +31,7 @@ public final class RemoteDeckTransport implements DeckTransport {
     private static final Gson GSON = new Gson();
 
     public static final String DEFAULT_PAIRING_FILE =
-            Path.of(System.getProperty("user.home"), ".streamdecked", "pairing.json").toString();
+            Path.of(System.getProperty("user.home"), ".config", "streamdecked", "pairing.json").toString();
     private static final String DEFAULT_CLIENT_NAME = "minecraft";
     private static final String LIB_VERSION = "1.0.1";
 
